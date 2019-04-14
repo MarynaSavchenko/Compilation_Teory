@@ -1,5 +1,5 @@
 import sys
-import scaner  # scanner.py is a file you create, (it is not an external library)
+import scanner  # scanner.py is a file you create, (it is not an external library)
 
 if __name__ == '__main__':
 
@@ -11,7 +11,7 @@ if __name__ == '__main__':
         sys.exit(0)
 
     text = file.read()
-    lexer = scaner.lexer
+    lexer = scanner.lexer
     lexer.input(text)  # Give the lexer some input
 
     # Tokenize
@@ -19,6 +19,6 @@ if __name__ == '__main__':
         tok = lexer.token()
         if not tok:
             break  # No more input
-        column = scaner.find_column(text, tok)
+        column = scanner.find_column(text, tok)
         print("(%d,%d): %s(%s)" % (tok.lineno, column, tok.type, tok.value))
 

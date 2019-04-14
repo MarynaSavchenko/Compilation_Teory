@@ -1,7 +1,7 @@
 #!/usr/bin/python
 import sys
 import parser
-import scaner
+import scanner
 
 if __name__ == '__main__':
     try:
@@ -14,7 +14,7 @@ if __name__ == '__main__':
 
     parser = parser.parser
     text = file.read()
-    parser.parse(text, lexer=scaner.lexer)
+    parser.parse(text, lexer=scanner.lexer)
 
 
 
