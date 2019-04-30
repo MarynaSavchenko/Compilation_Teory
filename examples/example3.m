@@ -51,7 +51,7 @@ for i = 1:N {
     else if(i<=N/4)
         continue;
     else if(i<=N/2)
-        return 0;
+        return i+1;
 }
 
 

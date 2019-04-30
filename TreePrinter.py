@@ -77,9 +77,9 @@ class TreePrinter:
         print(TreePrinter.make_indent(indent) + self.func_name)
         self.arg.printTree(indent + 1)
 
-    @addToClass(AST.Matrix)
+    @addToClass(AST.Vector)
     def printTree(self, indent=0):
-        print(TreePrinter.make_indent(indent) + 'MATRIX')
+        print(TreePrinter.make_indent(indent) + 'VECTOR')
         for el in self.elements:
             el.printTree(indent + 1)
 
@@ -98,7 +98,8 @@ class TreePrinter:
         print(TreePrinter.make_indent(indent) + 'REF')
         self.var.printTree(indent + 1)
         self.first_el.printTree(indent + 1)
-        self.second_el.printTree(indent + 1)
+        if self.second_el is not None:
+            self.second_el.printTree(indent + 1)
 
     @addToClass(AST.CompExpr)
     def printTree(self, indent=0):

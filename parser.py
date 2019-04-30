@@ -48,7 +48,7 @@ def p_loop_function(p):
     p[0] = AST.LoopFunction(p[1])
 
 def p_return(p):
-    """return : RETURN digit """
+    """return : RETURN num """
     p[0] = AST.Return(p[2])
 
 
@@ -71,7 +71,8 @@ def p_error(p):
 
 def p_digit(p):
     """digit : INTNUM
-            | FLOATNUM """
+            | FLOATNUM
+            | var """
 
     if isinstance(p[1], int):
         p[0] = AST.IntNum(p[1])
@@ -91,24 +92,35 @@ def p_num(p):
             | matrix
             | matrix_function
             | uminus
-            | var
-            | transposition"""
+            | transposition
+            | ref """
     p[0] = p[1]
 
 def p_matrix(p):
-    """matrix : '[' values ']' """
-    p[0] = AST.Matrix(p[2])
+    """matrix : '[' matrix_body ']' """
+    p[0] = AST.Vector(p[2])
 
-def p_values(p):
-    """values :
-            | values num ','
-            | values num
-            | values num ';' """
-    if len(p) == 1:
-        p[0] = list()
+def p_matrix_body(p):
+    """matrix_body : vector
+                    | matrix_body ';' vector"""
+    if len(p) == 2:
+        p[0] = [p[1]]
     else:
-        p[1].append(p[2])
         p[0] = p[1]
+        p[0] += [p[3]]
+
+def p_vector(p):
+    """vector : vector_body """
+    p[0] = AST.Vector(p[1])
+
+def p_vector_body(p):
+    """vector_body : num
+                  | vector_body ',' num """
+    if len(p) == 2:
+        p[0] = [p[1]]
+    else:
+        p[0] = p[1]
+        p[0] += [p[3]]
 
 def p_num_expression(p):
     """num : num '+' num
@@ -172,8 +184,14 @@ def p_if_statement(p):
         p[0] = AST.If(p[3], p[5], p[7])
 
 def p_ref(p):
-    """ref : var '[' digit ',' digit ']' """
-    p[0] = AST.Ref(p[1],p[3],p[5])
+    """ref : var '[' digit ',' digit ']'
+            | var '[' digit ']' """
+    if len(p) == 7:
+        p[0] = AST.Ref(p[1],p[3],p[5])
+    else:
+        p[0] = AST.Ref(p[1],p[3])
+
+
 
 
 def p_while_statement(p):

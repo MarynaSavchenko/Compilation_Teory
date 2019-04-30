@@ -12,9 +12,10 @@ class VariableSymbol(Symbol):
 
 class VectorType(Symbol):
 
-    def __init__(self, size, type):
+    def __init__(self, size, type, dimension):
         self.size = size
         self.type = type
+        self.dimension = dimension
 
 
 class SymbolTable(object):

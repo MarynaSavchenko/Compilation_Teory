@@ -53,13 +53,12 @@ class Assigment(Node):
         self.right = right
 
 
-class Matrix(Node):
+class Vector(Node):
     def __init__(self, elements):
         self.elements = elements
 
 
 class Error(Node):
-    def __init__(self):
         pass
 
 
@@ -75,8 +74,8 @@ class Instructions(Node):
 
 class MatrixFunc(Node):
     def __init__(self, func_name, arg):
-        self.arg = arg
         self.func_name = func_name
+        self.arg = arg
 
 
 class If(Node):
@@ -87,7 +86,7 @@ class If(Node):
 
 
 class Ref(Node):
-    def __init__(self, var, first_el, second_el):
+    def __init__(self, var, first_el, second_el=None):
         self.var = var
         self.first_el = first_el
         self.second_el = second_el

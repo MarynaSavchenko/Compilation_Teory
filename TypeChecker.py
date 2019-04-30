@@ -1,6 +1,40 @@
 #!/usr/bin/python
+from collections import defaultdict
+
 import AST
 from SymbolTable import SymbolTable, VectorType, VariableSymbol
+
+_type = defaultdict(lambda: defaultdict(lambda: defaultdict(lambda: None)))
+standard_ops = ['+', '-', '*', '/']
+matrix_ops = ['.+', '.-', '.*', './']
+relation_ops = ['<', '>', '>=', '<=', '==', '!=']
+assign_ops = ['+=', '-=', '*=', '/=']
+
+for op in ['+', '-', '*', '/', '+=', '-=', '*=', '/=']:
+    _type[op]['float']['float'] = 'float'
+    _type[op]['int']['int'] = 'int'
+    _type[op]['int']['float'] = 'float'
+    _type[op]['float']['int'] = 'float'
+    _type[op]['vector']['vector'] = 'vector'
+
+
+for op in ['<', '>', '>=', '<=', '==', '!=']:
+    _type[op]['float']['float'] = 'float'
+    _type[op]['int']['int'] = 'int'
+    _type[op]['int']['float'] = 'float'
+    _type[op]['float']['int'] = 'float'
+
+for op in ['.+', '.-', '.*', './']:
+    _type[op]['vector']['vector'] = 'vector'
+
+
+#_type['+']['string']['string'] = 'string'
+
+_type['\'']['vector'][None] = 'vector'
+_type['-']['vector'][None] = 'vector'
+_type['-']['int'][None] = 'int'
+_type['-']['float'][None] = 'float'
+
 
 
 class NodeVisitor(object):
@@ -35,7 +69,8 @@ class ErrorType:
 class TypeChecker(NodeVisitor):
 
     def __init__(self):
-        self.symbol_table = SymbolTable()
+        self.symbol_table = SymbolTable(None, 'main')
+        self.loop_entry = 0
 
     def visit_IntNum(self, node):
         return 'int'
@@ -43,10 +78,14 @@ class TypeChecker(NodeVisitor):
     def visit_FloatNum(self, node):
         return 'float'
 
+    def visir_String(self, node):
+        return 'string'
+
     def visit_Return(self, node):
         return self.visit(node.value)
 
     def visit_Variable(self, node):
+        print('wow')
         variable_val = self.symbol_table.get(node.name)
         if variable_val is None:
             print(f"Error in line . Unknown variable")
@@ -89,7 +128,9 @@ class TypeChecker(NodeVisitor):
 
     def visit_UnaryExpr(self, node):
         type1 = self.visit(node.right)
-        result_type = _type['-'][str(type1)][None]
+        op = node.op
+        result_type = _type[op][str(type1)][None]
+        ###
         if result_type is not None:
             return result_type
         else:
@@ -118,33 +159,119 @@ class TypeChecker(NodeVisitor):
                 print(f"Error in line")
                 return ErrorType()
 
-    def visit_Matrix(self, node):
-        pass
+    def visit_Vector(self, node):
+        vectors = node.elements
+        first_vector = vectors[0]
+        if type(first_vector) == AST.Vector:
+            for vector in vectors:
+                if not len(vector.elements) == len(first_vector.elements):
+                    print("Error in line. Different length")
+                    return ErrorType()
+                for el in vector.elements:
+                    if not type(el) == type(first_vector.elements[0]):
+                        print("Wrong type in vector")
+                        return ErrorType()
+            return VectorType([len(vectors), len(first_vector)], type(first_vector), 2)
+        else:
+            for vector in vectors:
+                if not type(vector) == type(first_vector):
+                    print("error in vector.Different types")
+                    return ErrorType()
+            return VectorType([len(first_vector)], type(first_vector), 1)
+
 
     def visit_Print(self, node):
-        pass
+        self.visit(node.values)
 
     def visit_Instructions(self, node):
-        pass
+        for instruction in node.next:
+            self.visit(instruction)
 
     def visit_MatrixFunc(self, node):
-        pass
+        type = self.visit(node.arg)
+        if type == 'int':
+            return VectorType([node.arg, node.arg], 'int', 2)
+        else:
+            print("Wrong type in matrix function")
+            return ErrorType()
 
     def visit_If(self, node):
-        pass
+        self.visit(node.condition)
+        self.symbol_table.pushScope('if')
+        self.visit(node.if_body)
+        self.symbol_table.popScope()
+        if node.else_body is not None:
+            self.symbol_table.pushScope('else')
+            self.visit(node.else_body)
+            self.symbol_table.popScope()
 
     def visit_Ref(self, node):
-        pass
+        type_name = self.visit(node.var)
+        if not isinstance(type_name, VectorType):
+            print("Error")
+            return ErrorType()
+        type1 = self.visit(node.first_el)
+        if self.second_el is not None:
+            type2 = self.visit(node.second_el)
+            val1 = node.first_el.value
+            val2 = node.second_el.value
+            if type2 == 'int' and type1 == 'int':
+                if type_name.dimension != 2:
+                    print("Wrong dimision")
+                    return ErrorType()
+                if val1 >= type_name.size[0] or val2 >= type_name.size[1]:
+                    print("Index out")
+                    return ErrorType()
+                return type_name.type
+            else:
+                print("Wrong types")
+                return ErrorType()
+        else:
+            if type1 == 'int':
+                val = node.first_el.value
+                if type_name.dimension != 1:
+                    print("Error dimension")
+                    return ErrorType()
+                if val >= type_name.size or val < 0:
+                    print("Index out")
+                    return ErrorType()
+                return type_name.type
+            else:
+                print("Error")
+                return ErrorType()
+
+
 
     def visit_While(self, node):
-        pass
+        self.loop_entry += 1
+        self.symbol_table.pushScope('while')
+        self.visit(node.condition)
+        self.visit(node.while_body)
+        self.symbol_table.popScope()
+        self.loop_entry -= 1
 
     def visit_For(self, node):
-        pass
+        self.loop_entry += 1
+        self.symbol_table.pushScope('for')
+        type1 = self.visit(node.range)
+        self.symbol_table.put(node.iter, type1)
+        self.visit(node.for_body)
+        self.symbol_table = self.symbol_table.popScope()
+        self.loop_entry -= 1
 
     def visit_Range(self, node):
-        pass
+        type1 = self.visit(node.left)
+        type2 = self.visit(node.right)
+        if not isinstance(type1, int):
+            print("Error in type of left el")
+            return ErrorType()
+        if not isinstance(type1, int):
+            print("Error in type of right el")
+            return ErrorType()
+        return type2
+
 
     def visit_LoopFunction(self, node):
-        pass
+        if self.loop_entry <= 0:
+            print("Error. Break or Continue outside the loop")
 
