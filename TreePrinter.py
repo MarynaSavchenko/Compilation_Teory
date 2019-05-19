@@ -72,7 +72,7 @@ class TreePrinter:
         print(TreePrinter.make_indent(indent) + self.op)
         self.right.printTree(indent + 1)
 
-    @addToClass(AST.MatrixFunc)
+    @addToClass(AST.MatrixFunction)
     def printTree(self, indent=0):
         print(TreePrinter.make_indent(indent) + self.func_name)
         self.arg.printTree(indent + 1)
@@ -110,6 +110,7 @@ class TreePrinter:
     @addToClass(AST.While)
     def printTree(self, indent=0):
         print(TreePrinter.make_indent(indent) + 'WHILE')
+        self.condition.printTree(indent + 1)
         self.while_body.printTree(indent + 1)
 
     @addToClass(AST.For)
