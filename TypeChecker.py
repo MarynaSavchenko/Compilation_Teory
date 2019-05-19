@@ -5,10 +5,6 @@ import AST
 from SymbolTable import SymbolTable, VectorType, VariableSymbol
 
 _type = defaultdict(lambda: defaultdict(lambda: defaultdict(lambda: None)))
-standard_ops = ['+', '-', '*', '/']
-matrix_ops = ['.+', '.-', '.*', './']
-relation_ops = ['<', '>', '>=', '<=', '==', '!=']
-assign_ops = ['+=', '-=', '*=', '/=']
 
 for op in ['+', '-', '*', '/', '+=', '-=', '*=', '/=']:
     _type[op]['float']['float'] = 'float'
@@ -16,7 +12,6 @@ for op in ['+', '-', '*', '/', '+=', '-=', '*=', '/=']:
     _type[op]['int']['float'] = 'float'
     _type[op]['float']['int'] = 'float'
     _type[op]['vector']['vector'] = 'vector'
-
 
 for op in ['<', '>', '>=', '<=', '==', '!=']:
     _type[op]['float']['float'] = 'float'
@@ -27,14 +22,11 @@ for op in ['<', '>', '>=', '<=', '==', '!=']:
 for op in ['.+', '.-', '.*', './']:
     _type[op]['vector']['vector'] = 'vector'
 
-
-#_type['+']['string']['string'] = 'string'
-
 _type['\'']['vector'][None] = 'vector'
 _type['-']['vector'][None] = 'vector'
 _type['-']['int'][None] = 'int'
 _type['-']['float'][None] = 'float'
-
+_type['+']['string']['string'] = 'string'
 
 
 class NodeVisitor(object):
@@ -62,6 +54,7 @@ class NodeVisitor(object):
     #    for child in node.children:
     #        self.visit(child)
 
+
 class ErrorType:
     pass
 
@@ -78,17 +71,16 @@ class TypeChecker(NodeVisitor):
     def visit_FloatNum(self, node):
         return 'float'
 
-    def visir_String(self, node):
+    def visit_String(self, node):
         return 'string'
 
     def visit_Return(self, node):
         return self.visit(node.value)
 
     def visit_Variable(self, node):
-        print('wow')
         variable_val = self.symbol_table.get(node.name)
         if variable_val is None:
-            print(f"Error in line . Unknown variable")
+            print(f"Error in line {node.line}. Unknown variable")
             return ErrorType()
         return variable_val.type
 
@@ -105,12 +97,11 @@ class TypeChecker(NodeVisitor):
             if result_type == 'vector':
                 if isinstance(type1, VectorType) and isinstance(type2, VectorType):
                     if type1.size != type2.size or type1.type != type2.type:
-                        print(f"Error in line . Different size of matrix")
+                        print(f"Error in line {node.line}. Different size or type of matrix")
                         return ErrorType()
-                    #else:
             return result_type
         else:
-            print(f"Error at line. Wrong type")
+            print(f"Error in line {node.line}. Wrong type")
             return ErrorType()
 
     def visit_CompExpr(self, node):
@@ -118,67 +109,79 @@ class TypeChecker(NodeVisitor):
         type2 = self.visit(node.right)
         op = node.op
         if isinstance(type2, ErrorType) or isinstance(type1, ErrorType):
-            return ErrorType
+            return ErrorType()
         result_type = _type[op][str(type1)][str(type2)]
         if result_type is not None:
             return result_type
         else:
-            print(f"Error in line")
+            print(f"Error in line {node.line}")
             return ErrorType()
 
     def visit_UnaryExpr(self, node):
         type1 = self.visit(node.right)
         op = node.op
-        result_type = _type[op][str(type1)][None]
-        ###
-        if result_type is not None:
-            return result_type
+        if op == ['\'']:
+            result_type = _type[op][str(type1)][None]
+            if result_type is 'vector':
+                if type1.dimension != 2:
+                    print(f"Error in line {node.line}. Transpose for 2 dimension.")
+                    return ErrorType()
+                type1.size[0], type1.size[1] = type1.size[1], type1.size[0]
+                return result_type
+            else:
+                print(f"Error in line {node.line}. Wrong type for transpose")
+                return ErrorType()
         else:
-            print(f"Error in line")
-            return ErrorType()
+            result_type = _type[op][str(type1)][None]
+            if result_type is not None:
+                return result_type
+            else:
+                print(f"Error in line {node.line}")
+                return ErrorType()
 
     def visit_Assigment(self, node):
-        type1 = self.visit(node.right)
+        type2 = self.visit(node.right)
         op = node.op
-        if isinstance(type1, ErrorType):
-            return ErrorType
+        if isinstance(type2, ErrorType):
+            return ErrorType()
         if op == '=':
-            self.symbol_table.put(node.left.name, VariableSymbol(node.left.name, type1))
+            if type(node.left) == AST.Variable:
+                self.symbol_table.put(node.left.name, VariableSymbol(node.left.name, type2))
+            else:
+                self.symbol_table.put(node.left.var, VariableSymbol(node.left.var, type2))
         else:
-            type2 = self.visit(node.left)
-            result_type = _type[op][str(type2)][str(type1)]
+            type1 = self.visit(node.left)
+            result_type = _type[op][str(type1)][str(type2)]
             if result_type is not None:
                 if result_type == 'vector':
                     if isinstance(type1, VectorType) and isinstance(type2, VectorType):
                         if type1.size != type2.size:
-                            print(f"Error in line ")
+                            print(f"Error in line {node.line}")
                             return ErrorType()
-                        #else:
                 return result_type
             else:
-                print(f"Error in line")
+                print(f"Error in line {node.line}. Wrong op with such types")
                 return ErrorType()
 
     def visit_Vector(self, node):
-        vectors = node.elements
-        first_vector = vectors[0]
-        if type(first_vector) == AST.Vector:
-            for vector in vectors:
-                if not len(vector.elements) == len(first_vector.elements):
-                    print("Error in line. Different length")
+        elements = node.elements
+        first_element = elements[0]
+        if type(first_element) == AST.Vector:
+            for vector in elements:
+                if len(vector.elements) != len(first_element.elements):
+                    print(f"Error in line {node.line}. Different length")
                     return ErrorType()
                 for el in vector.elements:
-                    if not type(el) == type(first_vector.elements[0]):
-                        print("Wrong type in vector")
+                    if type(el) != type(first_element.elements[0]):
+                        print(f"Error in line {node.line}.Wrong type in vector")
                         return ErrorType()
-            return VectorType([len(vectors), len(first_vector)], type(first_vector), 2)
+            return VectorType([len(elements), len(first_element.elements)], type(first_element), 2)
         else:
-            for vector in vectors:
-                if not type(vector) == type(first_vector):
-                    print("error in vector.Different types")
+            for element in elements:
+                if type(element) != type(first_element):
+                    print(f"Error in line {node.line}. Different types")
                     return ErrorType()
-            return VectorType([len(first_vector)], type(first_vector), 1)
-
+            return VectorType([len(elements)], type(first_element), 1)
 
     def visit_Print(self, node):
         self.visit(node.values)
@@ -187,74 +190,72 @@ class TypeChecker(NodeVisitor):
         for instruction in node.next:
             self.visit(instruction)
 
-    def visit_MatrixFunc(self, node):
+    def visit_MatrixFunction(self, node):
         type = self.visit(node.arg)
         if type == 'int':
             return VectorType([node.arg, node.arg], 'int', 2)
         else:
-            print("Wrong type in matrix function")
+            print(f"Error in line {node.line}. Wrong type in matrix function {node.func_name}")
             return ErrorType()
 
     def visit_If(self, node):
         self.visit(node.condition)
-        self.symbol_table.pushScope('if')
+        self.symbol_table = self.symbol_table.pushScope('if')
         self.visit(node.if_body)
-        self.symbol_table.popScope()
-        if node.else_body is not None:
+        self.symbol_table = self.symbol_table.popScope()
+        if node.else_body:
             self.symbol_table.pushScope('else')
             self.visit(node.else_body)
             self.symbol_table.popScope()
 
     def visit_Ref(self, node):
-        type_name = self.visit(node.var)
-        if not isinstance(type_name, VectorType):
-            print("Error")
+        type_var = self.visit(node.var)
+        if not isinstance(type_var, VectorType):
+            print(f"Error in line {node.line}. Vector is needed in ref")
             return ErrorType()
         type1 = self.visit(node.first_el)
-        if self.second_el is not None:
+        if self.second_el:
             type2 = self.visit(node.second_el)
-            val1 = node.first_el.value
-            val2 = node.second_el.value
+            row = node.first_el.value
+            column = node.second_el.value
             if type2 == 'int' and type1 == 'int':
-                if type_name.dimension != 2:
-                    print("Wrong dimision")
+                if type_var.dimension != 2:
+                    print(f"Error in line {node.line}. Wrong dimension")
                     return ErrorType()
-                if val1 >= type_name.size[0] or val2 >= type_name.size[1]:
-                    print("Index out")
+                if row >= type_var.size[0] or column >= type_var.size[1]:
+                    print(f"Error in line {node.line}. Index out")
                     return ErrorType()
-                return type_name.type
+                return type_var.type
             else:
-                print("Wrong types")
+                print(f"Error in line {node.line}. Wrong types")
                 return ErrorType()
         else:
             if type1 == 'int':
-                val = node.first_el.value
-                if type_name.dimension != 1:
-                    print("Error dimension")
+                el = node.first_el.value
+                if type_var.dimension != 1:
+                    print(f"Error in line {node.line}. Error dimension")
                     return ErrorType()
-                if val >= type_name.size or val < 0:
-                    print("Index out")
+                if el >= type_var.size:
+                    print(f"Error in line {node.line}. Index out")
                     return ErrorType()
-                return type_name.type
+                return type_var.type
             else:
-                print("Error")
+                print(f"Error in line {node.line}. Index should be int")
                 return ErrorType()
-
-
 
     def visit_While(self, node):
         self.loop_entry += 1
-        self.symbol_table.pushScope('while')
+        self.symbol_table = self.symbol_table.pushScope('while')
         self.visit(node.condition)
         self.visit(node.while_body)
-        self.symbol_table.popScope()
+        self.symbol_table = self.symbol_table.popScope()
         self.loop_entry -= 1
 
     def visit_For(self, node):
         self.loop_entry += 1
-        self.symbol_table.pushScope('for')
+        self.symbol_table = self.symbol_table.pushScope('for')
         type1 = self.visit(node.range)
-        self.symbol_table.put(node.iter, type1)
+        self.symbol_table.put(node.iter.name, VariableSymbol(node.iter.name, type1))
         self.visit(node.for_body)
         self.symbol_table = self.symbol_table.popScope()
         self.loop_entry -= 1
@@ -262,16 +263,14 @@ class TypeChecker(NodeVisitor):
     def visit_Range(self, node):
         type1 = self.visit(node.left)
         type2 = self.visit(node.right)
-        if not isinstance(type1, int):
-            print("Error in type of left el")
+        if type1 != 'int' or isinstance(type1, ErrorType):
+            print(f"Error in line {node.line}. Error in type of left el")
             return ErrorType()
-        if not isinstance(type1, int):
-            print("Error in type of right el")
+        if type2 != 'int' or isinstance(type2, ErrorType):
+            print(f"Error in line {node.line}. Error in type of right el")
             return ErrorType()
         return type2
 
-
     def visit_LoopFunction(self, node):
         if self.loop_entry <= 0:
-            print("Error. Break or Continue outside the loop")
-
+            print(f"Error in line {node.line}. Break or Continue outside the loop")

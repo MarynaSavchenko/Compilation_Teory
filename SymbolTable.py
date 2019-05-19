@@ -10,12 +10,16 @@ class VariableSymbol(Symbol):
         self.name = name
         self.type = type
 
+
 class VectorType(Symbol):
 
     def __init__(self, size, type, dimension):
         self.size = size
         self.type = type
         self.dimension = dimension
+
+    def __str__(self):
+        return 'vector'
 
 
 class SymbolTable(object):
@@ -41,7 +45,7 @@ class SymbolTable(object):
         return self.parent
 
     def pushScope(self, name):
-        pass
+        return SymbolTable(self, name) #parent = self
 
     def popScope(self):
-        pass
+        return self.parent
