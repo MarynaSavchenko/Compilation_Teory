@@ -84,12 +84,11 @@ def p_numer(p):
     else:
         p[0] = AST.FloatNum(p[1])
 
+
 def p_num_expression(p):
     """num_expression : numer
                     | var """
     p[0] = p[1]
-
-
 
 
 def p_string(p):
@@ -197,6 +196,7 @@ def p_matrix_function(p):
                   | ZEROS LPAREN expression RPAREN"""
     p[0] = AST.MatrixFunction(p[1], p[3], p.lineno(1))
 
+
 def p_if_statement(p):
     """if_statement : IF LPAREN compare_expression RPAREN instruction
                   | IF LPAREN compare_expression RPAREN instruction ELSE instruction %prec IFELSE"""
@@ -210,9 +210,9 @@ def p_ref(p):
     """ref : var '[' num_expression ',' num_expression ']'
             | var '[' num_expression ']' """
     if len(p) == 7:
-        p[0] = AST.Ref(p.lineno(1), p[1], p[3], p[5])
+        p[0] = AST.Ref(p.lineno(2), p[1], p[3], p[5])
     else:
-        p[0] = AST.Ref(p.lineno(1), p[1], p[3])
+        p[0] = AST.Ref(p.lineno(2), p[1], p[3])
 
 
 def p_while_statement(p):

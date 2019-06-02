@@ -3,7 +3,7 @@
 # transposition
 
 A = zeros(5);
-B = zeros(5);
+B = eye(5);
 
 C = -A;     # assignemnt with unary expression
 C = B' ;    # assignemnt with matrix transpose
