@@ -147,7 +147,8 @@ class TypeChecker(NodeVisitor):
         if op == '=':
             if type(node.left) == AST.Variable:
                 self.symbol_table.put(node.left.name, VariableSymbol(node.left.name, type2))
-            else:
+            else: #ref
+                type1 = self.visit(node.left)
                 self.symbol_table.put(node.left.var, VariableSymbol(node.left.var, type2))
         else:
             type1 = self.visit(node.left)
@@ -193,7 +194,7 @@ class TypeChecker(NodeVisitor):
     def visit_MatrixFunction(self, node):
         type = self.visit(node.arg)
         if type == 'int':
-            return VectorType([node.arg, node.arg], 'int', 2)
+            return VectorType([node.arg.value, node.arg.value], 'int', 2)
         else:
             print(f"Error in line {node.line}. Wrong type in matrix function {node.func_name}")
             return ErrorType()
@@ -214,7 +215,7 @@ class TypeChecker(NodeVisitor):
             print(f"Error in line {node.line}. Vector is needed in ref")
             return ErrorType()
         type1 = self.visit(node.first_el)
-        if self.second_el:
+        if node.second_el:
             type2 = self.visit(node.second_el)
             row = node.first_el.value
             column = node.second_el.value
@@ -235,7 +236,7 @@ class TypeChecker(NodeVisitor):
                 if type_var.dimension != 1:
                     print(f"Error in line {node.line}. Error dimension")
                     return ErrorType()
-                if el >= type_var.size:
+                if el >= type_var.size[0]:
                     print(f"Error in line {node.line}. Index out")
                     return ErrorType()
                 return type_var.type

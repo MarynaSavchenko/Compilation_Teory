@@ -1,7 +1,8 @@
 import numpy
+numpy.seterr(divide='ignore', invalid='ignore')
+
 
 import AST
-import SymbolTable
 from Memory import *
 from Exceptions import *
 from visit import *
@@ -14,6 +15,17 @@ binOps = {
     "-": (lambda x, y: x - y),
     "*": (lambda x, y: x * y),
     "/": (lambda x, y: x / y),
+}
+
+binOpsMatrix = {
+    ".+": (lambda x, y: numpy.add(x, y)),
+    ".-": (lambda x, y: numpy.subtract(x, y)),
+    ".*": (lambda x, y: numpy.multiply(x, y)),
+    "./": (lambda x, y: numpy.divide(x, y)),
+    "+": (lambda x, y: numpy.matrix(x) + numpy.matrix(y)),
+    "-": (lambda x, y: numpy.matrix(x) - numpy.matrix(y)),
+    "*": (lambda x, y: numpy.matrix(x) * numpy.matrix(y)),
+    "/": (lambda x, y: numpy.matrix(x) / numpy.matrix(y)),
 
 }
 
@@ -31,6 +43,13 @@ assignOps = {
     "-=": (lambda x, y: x - y),
     "*=": (lambda x, y: x * y),
     "/*": (lambda x, y: x / y),
+}
+
+assignOpsMatrix = {
+    "+=": (lambda x, y: numpy.matrix(x) + numpy.matrix(y)),
+    "-=": (lambda x, y: numpy.matrix(x) - numpy.matrix(y)),
+    "*=": (lambda x, y: numpy.matrix(x) * numpy.matrix(y)),
+    "/=": (lambda x, y: numpy.matrix(x) / numpy.matrix(y)),
 }
 
 
@@ -59,11 +78,14 @@ class Interpreter(object):
     def visit(self, node):
         return self.memoryStack.get(node.name)
 
-    @when(AST.BinExpr)  # TODO matrix
+    @when(AST.BinExpr)
     def visit(self, node):
         r1 = node.left.accept(self)
         r2 = node.right.accept(self)
-        return binOps[node.op](r1, r2)
+        if type(r1) is list and type(r2) is list:
+            return binOpsMatrix[node.op](r1, r2).tolist()
+        else:
+            return binOps[node.op](r1, r2)
 
     @when(AST.CompExpr)
     def visit(self, node):
@@ -74,21 +96,26 @@ class Interpreter(object):
     @when(AST.UnaryExpr)
     def visit(self, node):
         op = node.op
+        r = node.right.accept(self)
         if op == '-':
-            return - node.right.accept(self)
+            if type(r) is list:
+                return (numpy.matrix(r) * -1).tolist()
+            else:
+                return - r
         else:
             array = numpy.array(self.memoryStack.get(node.right))
-            return array.transpose()
+            return array.transpose().tolist()
 
     @when(AST.Assigment)
     def visit(self, node):
         r1 = node.right.accept(self)
         if node.op == '=':
             if isinstance(node.left, AST.Variable):  # set var
-                if self.memoryStack.get(node.left.name):
-                    self.memoryStack.set(node.left.name, r1)
-                else:
+                if self.memoryStack.get(node.left.name) is None:
                     self.memoryStack.insert(node.left.name, r1)
+                else:
+                    self.memoryStack.set(node.left.name, r1)
+
             else:  # assign elements in matrix
                 array = self.memoryStack.get(node.left.var.name)
                 first_el = node.left.first_el.accept(self)
@@ -100,13 +127,16 @@ class Interpreter(object):
         else:
             if isinstance(node.left, AST.Variable):
                 r2 = self.memoryStack.get(node.left.name)
+                if type(r1) is list and type(r2) is list:
 
-                result = assignOps[node.op](r2, r1)  # TODO matrix
+                    result = assignOpsMatrix[node.op](r2, r1).tolist()
+                else:
+                    result = assignOps[node.op](r2, r1)
                 self.memoryStack.set(node.left.name, result)
             else:  # Ref
                 array = self.memoryStack.get(node.left.var.name)
                 first_el = node.left.first_el.accept(self)
-                if node.left.second_el:  # TODO matrix
+                if node.left.second_el:
                     second_el = node.left.second_el.accept(self)
                     array[first_el][second_el] = assignOps[node.op](array[first_el][second_el], r1)
                 else:
@@ -136,11 +166,11 @@ class Interpreter(object):
     def visit(self, node):
         r1 = node.arg.accept(self)
         if node.func_name == 'ones':
-            return numpy.ones((r1, r1))
+            return numpy.ones((r1, r1)).tolist()
         elif node.func_name == 'zeros':
-            return numpy.zeros((r1, r1))
+            return numpy.zeros((r1, r1)).tolist()
         else:
-            return numpy.eye(r1)
+            return numpy.eye(r1).tolist()
 
     @when(AST.If)
     def visit(self, node):
