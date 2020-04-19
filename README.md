@@ -1,4 +1,5 @@
 # Compilation_Theory
+University subject
 1) main - scanner:
 Recognize lexems like:  +, -, *, /
                         .+, .-, .*, ./
